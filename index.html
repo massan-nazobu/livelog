@@ -38,6 +38,38 @@ header{background:linear-gradient(135deg,#111827,#312e81 55%,#7c3aed);color:whit
 .viewToggle{display:flex;gap:7px;margin:0 0 15px}.viewToggle button.active{background:#111827;color:white}
 @media(max-width:650px){.infoGrid{grid-template-columns:1fr 1fr}.gallery{grid-template-columns:repeat(2,1fr)}.heroPhoto{height:180px}}
 </style>
+<style>
+/* Detail page visual refresh */
+.heroDetail{border-radius:24px;overflow:hidden}
+.heroPhoto{height:320px;position:relative;align-items:flex-end;padding:0;background-color:#1f2937}
+.heroPhoto::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(17,24,39,.05) 25%,rgba(17,24,39,.82) 100%)}
+.heroPhoto .date{position:relative;z-index:1;margin:0 0 18px 18px;background:rgba(255,255,255,.94);box-shadow:0 5px 18px rgba(0,0,0,.18);border-radius:999px;padding:7px 12px}
+.detailBody{padding:0 22px 24px}
+.detailBody>.festivalBadge{margin-top:-17px;position:relative;z-index:2;box-shadow:0 4px 14px rgba(0,0,0,.08)}
+.detailArtist{font-size:32px;line-height:1.15;margin:18px 0 4px}
+.detailTour{font-size:14px;margin-bottom:10px}
+.detailBody>.stars{font-size:17px;margin:8px 0 18px}
+.infoGrid{position:relative;margin:18px 0 22px;padding:18px 14px;display:grid;grid-template-columns:repeat(2,1fr);gap:0;background:#fff;border:1px solid #dfe3ea;border-radius:16px;box-shadow:0 8px 24px rgba(17,24,39,.06)}
+.infoGrid::before,.infoGrid::after{content:"";position:absolute;width:14px;height:14px;border-radius:50%;background:var(--bg);top:50%;transform:translateY(-50%);border:1px solid #dfe3ea}
+.infoGrid::before{left:-8px;border-left:0}
+.infoGrid::after{right:-8px;border-right:0}
+.infoBox{background:transparent;border-radius:0;padding:9px 14px;border-bottom:1px dashed #d7dbe2;font-size:13px}
+.infoBox:nth-child(odd){border-right:1px dashed #d7dbe2}
+.infoBox:nth-last-child(-n+2){border-bottom:0}
+.infoBox b{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#8a93a3;margin-bottom:5px}
+.section{margin-top:25px}
+.section h3{font-size:16px;margin-bottom:10px}
+.setlist{box-shadow:inset 0 0 0 1px #e5e7eb}
+@media(max-width:650px){
+ .heroPhoto{height:245px}
+ .detailBody{padding:0 15px 22px}
+ .detailArtist{font-size:27px}
+ .infoGrid{grid-template-columns:1fr;padding:14px 12px}
+ .infoGrid::before,.infoGrid::after{display:none}
+ .infoBox,.infoBox:nth-child(odd){border-right:0}
+ .infoBox:nth-last-child(2){border-bottom:1px dashed #d7dbe2}
+}
+</style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
