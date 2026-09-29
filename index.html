@@ -154,5 +154,140 @@ async function start(user){currentUser=user;$('authView').style.display='none';$
 sb.auth.onAuthStateChange((e,s)=>{if(s?.user)start(s.user);else{$('authView').style.display='flex';$('userEmail').textContent='';logs=[];render()}})
 (async()=>{const r=await sb.auth.getSession();if(r.data.session)await start(r.data.session.user);else $('authView').style.display='flex'})()
 </script>
+
+<script>
+/* Festival mode */
+(function(){
+  function initFestivalUI(){
+    const form=document.getElementById('form');
+    const artistField=document.getElementById('artist')?.closest('.field');
+    if(!form||!artistField||document.getElementById('eventType')) return;
+    const typeWrap=document.createElement('div');
+    typeWrap.className='field full';
+    typeWrap.innerHTML='<label>記録タイプ *</label><select id="eventType"><option value="one_man">ワンマンライブ</option><option value="festival">フェス</option></select>';
+    form.querySelector('.formgrid').insertBefore(typeWrap,artistField);
+    const festWrap=document.createElement('div');
+    festWrap.id='festivalFields';
+    festWrap.className='field full';
+    festWrap.style.display='none';
+    festWrap.innerHTML='<label>見たアーティスト</label><textarea id="festivalArtists" placeholder="1行に1組ずつ入力してな。&#10;[Alexandros]&#10;SHISHAMO&#10;キタニタツヤ"></textarea><div class="festivalHelp">ここで登録したアーティストは、フェス詳細から個別に開いて、そのアーティスト専用のセトリ・印象に残った曲・感想を記録できるで。</div>';
+    form.querySelector('.formgrid').insertAfter ? null : form.querySelector('.formgrid').insertBefore(festWrap,document.getElementById('date').closest('.field'));
+    document.getElementById('eventType').addEventListener('change',toggleEventForm);
+    const style=document.createElement('style');
+    style.textContent='.festivalHelp{font-size:11px;color:#6b7280;line-height:1.6;margin-top:5px}.festivalBadge{display:inline-block;background:#f3e8ff;color:#6d28d9;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:800}.festivalList{display:grid;gap:8px}.festivalArtist{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:11px}.festivalArtist b{font-size:14px}.festivalArtist small{display:block;color:#6b7280;margin-top:3px}.childBack{margin-bottom:10px}';
+    document.head.appendChild(style);
+  }
+  function childLogs(parentId){return logs.filter(x=>String(x.parent_id||'')===String(parentId)&&x.event_type==='festival_artist')}
+  function topLogs(){return logs.filter(x=>x.event_type!=='festival_artist')}
+  window.toggleEventForm=function(){
+    const festival=document.getElementById('eventType')?.value==='festival' && !window._editingChild;
+    const ff=document.getElementById('festivalFields');
+    if(ff) ff.style.display=festival?'flex':'none';
+    const a=document.getElementById('artist');
+    const lab=a?.closest('.field')?.querySelector('label');
+    if(lab) lab.textContent=festival?'フェス名 *':'アーティスト名 *';
+    if(a) a.placeholder=festival?'METROCK 2026':'[Alexandros]';
+    if(document.getElementById('festivalArtists')) document.getElementById('festivalArtists').required=festival;
+  };
+  const oldOpenForm=window.openForm;
+  window.openForm=function(id=null,child=false){
+    window._editingChild=child;
+    oldOpenForm(id);
+    const et=document.getElementById('eventType');
+    if(!et)return;
+    et.disabled=!!child;
+    if(id){
+      const x=logs.find(a=>String(a.id)===String(id));
+      et.value=x?.event_type==='festival'?'festival':'one_man';
+      const fa=document.getElementById('festivalArtists');
+      if(fa && x?.event_type==='festival') fa.value=childLogs(x.id).map(a=>a.artist).join('\n');
+    }else{
+      et.value='one_man';
+      document.getElementById('festivalArtists').value='';
+    }
+    toggleEventForm();
+    if(child){
+      document.getElementById('formTitle').textContent='フェス内アーティストを編集';
+    }
+  };
+  const oldCloseForm=window.closeForm;
+  window.closeForm=function(){window._editingChild=false;const et=document.getElementById('eventType');if(et)et.disabled=false;oldCloseForm()};
+  const oldSave=window.save;
+  window.save=async function(e){
+    e.preventDefault();
+    const type=document.getElementById('eventType')?.value||'one_man';
+    syncSetlist();
+    const p={artist:document.getElementById('artist').value.trim(),tour:document.getElementById('tour').value.trim(),date:document.getElementById('date').value,venue:document.getElementById('venue').value.trim(),seat:document.getElementById('seat').value.trim(),with_person:document.getElementById('with').value.trim(),rating:+document.getElementById('rating').value,again:document.getElementById('again').value,songs:document.getElementById('songs').value.trim(),setlist:document.getElementById('setlist').value,memo:document.getElementById('memo').value};
+    let r;
+    if(window._editingChild){
+      p.event_type='festival_artist';
+      r=await sb.from('live_logs').update(p).eq('id',editing).select().single();
+    }else if(type==='festival'){
+      const names=[...new Set(document.getElementById('festivalArtists').value.split(/\r?\n|,/).map(s=>s.trim()).filter(Boolean))];
+      if(!p.artist)return alert('フェス名を入力してな。');
+      if(!names.length)return alert('見たアーティストを1組以上入力してな。');
+      p.event_type='festival';
+      if(editing){
+        r=await sb.from('live_logs').update(p).eq('id',editing).select().single();
+        if(!r.error){
+          const existing=childLogs(editing);
+          const keep=new Set(names);
+          const remove=existing.filter(x=>!keep.has(x.artist)).map(x=>x.id);
+          if(remove.length){const dr=await sb.from('live_logs').delete().in('id',remove);if(dr.error)return alert('アーティスト削除に失敗：\n'+dr.error.message);}
+          const have=new Set(existing.map(x=>x.artist));
+          const add=names.filter(n=>!have.has(n)).map(n=>({user_id:currentUser.id,parent_id:editing,event_type:'festival_artist',artist:n,tour:p.tour,date:p.date,venue:p.venue,seat:p.seat,with_person:p.with_person,rating:5,again:'機会があれば',songs:'',setlist:'',memo:''}));
+          if(add.length){const ar=await sb.from('live_logs').insert(add);if(ar.error)return alert('アーティスト追加に失敗：\n'+ar.error.message);}
+        }
+      }else{
+        p.user_id=currentUser.id;
+        r=await sb.from('live_logs').insert(p).select().single();
+        if(!r.error){
+          const parent=r.data;
+          const children=names.map(n=>({user_id:currentUser.id,parent_id:parent.id,event_type:'festival_artist',artist:n,tour:p.tour,date:p.date,venue:p.venue,seat:p.seat,with_person:p.with_person,rating:5,again:'機会があれば',songs:'',setlist:'',memo:''}));
+          const ar=await sb.from('live_logs').insert(children);
+          if(ar.error)return alert('アーティスト登録に失敗：\n'+ar.error.message);
+        }
+      }
+    }else{
+      p.event_type='one_man';
+      if(editing)r=await sb.from('live_logs').update(p).eq('id',editing).select().single();
+      else{p.user_id=currentUser.id;r=await sb.from('live_logs').insert(p).select().single();}
+    }
+    if(r.error)return alert('保存失敗：\n'+r.error.message);
+    const file=document.getElementById('photo').files[0];
+    if(file&&r.data?.id){const rd=new FileReader();rd.onload=()=>{const m=photoMap();m[r.data.id]=rd.result;localStorage.setItem('liveLogPhotos',JSON.stringify(m))};rd.readAsDataURL(file)}
+    await loadLogs();closeForm();
+  };
+  window.card=function(x){
+    const past=x.date<=new Date().toISOString().slice(0,10),p=getPhoto(x),isFestival=x.event_type==='festival',watched=isFestival?childLogs(x.id):[];
+    return '<article class="card"><div class="cover" '+(p?'style="background-image:url(\''+p+'\');background-size:cover;background-position:center"':'')+'><span class="date">'+esc(x.date||'日付未設定')+'</span></div><div class="body"><div class="artist">'+esc(x.artist)+'</div><div class="tour">'+esc(x.tour||'ライブ')+'</div><div class="meta">'+(x.venue?'📍 '+esc(x.venue)+'<br>':'')+(x.seat?'💺 '+esc(x.seat)+'<br>':'')+(x.with?'👥 '+esc(x.with):'')+'</div><div class="tags"><span class="tag">'+(isFestival?'🎪 フェス':(past?'参戦済み':'これから'))+'</span>'+(isFestival?'<span class="tag">🎤 '+watched.length+'組</span>':(x.songs?'<span class="tag">🎵 '+esc(x.songs)+'</span>':''))+'</div><div class="stars">'+'★'.repeat(+x.rating||0)+'☆'.repeat(5-(+x.rating||0))+'</div><div class="actions"><button class="ghost" onclick="showDetail(\''+x.id+'\')">詳細</button><button class="ghost" onclick="openForm(\''+x.id+'\')">編集</button><button class="danger" onclick="del(\''+x.id+'\')">削除</button></div></div></article>';
+  };
+  window.showDetail=function(id){
+    const x=logs.find(a=>String(a.id)===String(id));if(!x)return;
+    $('mainView').style.display='none';$('statsView').classList.remove('show');$('detailView').classList.add('show');
+    const p=getPhoto(x);
+    if(x.event_type==='festival'){
+      const children=childLogs(x.id);
+      $('detailContent').innerHTML='<article class="heroDetail"><div class="heroPhoto" '+(p?'style="background-image:url(\''+p+'\')"':'')+'><span class="date">'+esc(x.date)+'</span></div><div class="detailBody"><div class="festivalBadge">🎪 FESTIVAL</div><h1 class="detailArtist" style="margin-top:8px">'+esc(x.artist)+'</h1><div class="detailTour">'+esc(x.tour||'フェス')+'</div><div class="stars">'+'★'.repeat(+x.rating||0)+'☆'.repeat(5-(+x.rating||0))+'</div><div class="infoGrid"><div class="infoBox"><b>会場</b>'+esc(x.venue||'—')+'</div><div class="infoBox"><b>座席</b>'+esc(x.seat||'—')+'</div><div class="infoBox"><b>一緒に行った人</b>'+esc(x.with||'—')+'</div><div class="infoBox"><b>見たアーティスト</b>'+children.length+'組</div></div><div class="section"><h3>🎤 見たアーティスト</h3><div class="festivalList">'+(children.map(a=>'<div class="festivalArtist"><div><b>'+esc(a.artist)+'</b><small>'+parseSetlist(a.setlist||'').length+'曲のセトリ'+(a.memo?' ・感想あり':'')+'</small></div><button class="btn purple" onclick="showDetail(\''+a.id+'\')">詳細を見る</button></div>').join('')||'<div class="setlistEmpty">まだ登録されてへんで。</div>')+'</div></div>'+(x.memo?'<div class="section"><h3>💭 フェス全体の感想</h3><div class="memo">'+esc(x.memo)+'</div></div>':'')+'<div class="actions"><button class="btn purple" onclick="openForm(\''+x.id+'\')">フェスを編集</button><button class="btn danger" onclick="del(\''+x.id+'\')">削除</button></div></div></article>';
+    }else{
+      const parent=x.parent_id?logs.find(a=>String(a.id)===String(x.parent_id)):null;
+      $('detailContent').innerHTML='<article class="heroDetail"><div class="heroPhoto" '+(p?'style="background-image:url(\''+p+'\')"':'')+'><span class="date">'+esc(x.date)+'</span></div><div class="detailBody">'+(parent?'<button class="btn ghost childBack" onclick="showDetail(\''+parent.id+'\')">← '+esc(parent.artist)+' に戻る</button><div class="festivalBadge">🎪 フェス内アーティスト</div>':'')+'<h1 class="detailArtist">'+esc(x.artist)+'</h1><div class="detailTour">'+esc(x.tour||'ライブ')+'</div><div class="stars">'+'★'.repeat(+x.rating||0)+'☆'.repeat(5-(+x.rating||0))+'</div><div class="infoGrid"><div class="infoBox"><b>会場</b>'+esc(x.venue||'—')+'</div><div class="infoBox"><b>座席</b>'+esc(x.seat||'—')+'</div><div class="infoBox"><b>一緒に行った人</b>'+esc(x.with||'—')+'</div><div class="infoBox"><b>次回も行きたい？</b>'+esc(x.again||'—')+'</div></div>'+(x.songs?'<div class="section"><h3>🎵 特に印象に残った曲</h3><div class="memo">'+esc(x.songs)+'</div></div>':'')+(x.setlist?'<div class="section"><h3>📋 セトリ</h3><div class="setlist">'+parseSetlist(x.setlist).map((song,i)=>'<div class="setlistItem"><span class="setlistNo">'+(i+1)+'.</span><span class="setlistSong">'+esc(song)+'</span></div>').join('')+'</div></div>':'')+(x.memo?'<div class="section"><h3>💭 ライブの感想</h3><div class="memo">'+esc(x.memo)+'</div></div>':'')+'<div class="actions"><button class="btn purple" onclick="openForm(\''+x.id+'\','+(!!parent)+')">編集する</button><button class="btn danger" onclick="del(\''+x.id+'\')">削除</button></div></div></article>';
+    }
+    window.scrollTo({top:0,behavior:'smooth'});
+  };
+  window.render=function(){
+    const q=($('search')?.value||'').toLowerCase();
+    let a=topLogs().filter(x=>(x.artist+' '+x.tour+' '+x.venue+' '+x.memo).toLowerCase().includes(q));
+    const t=new Date().toISOString().slice(0,10);
+    if(filter==='past')a=a.filter(x=>x.date<=t);if(filter==='upcoming')a=a.filter(x=>x.date>t);
+    a.sort((x,y)=>y.date.localeCompare(x.date));
+    $('list').innerHTML=a.length?a.map(card).join(''):'<div class="empty" style="grid-column:1/-1"><div style="font-size:38px">🎫</div><h3>まだライブ記録がないで！</h3><p>「＋ ライブを記録」から、思い出を残してみよ。</p></div>';
+    $('count').textContent=a.length;
+    $('artists').textContent=new Set(logs.filter(x=>x.event_type!=='festival').map(x=>x.artist).concat(logs.filter(x=>x.event_type==='festival_artist').map(x=>x.artist))).size;
+    const y=new Date().getFullYear();$('yearCount').textContent=a.filter(x=>(x.date||'').startsWith(y+'')).length;$('yearLabel').textContent=y+'年';
+  };
+  initFestivalUI();
+})();
+</script>
 </body>
 </html>
