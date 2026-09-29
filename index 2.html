@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<title>LIVE LOG - ライブ記録</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--ink:#171923;--muted:#6b7280;--line:#e5e7eb;--accent:#7c3aed;--accent2:#ec4899;--danger:#dc2626;--shadow:0 10px 30px rgba(17,24,39,.08)}
+*{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP","Hiragino Kaku Gothic ProN",sans-serif;background:var(--bg);color:var(--ink)}
+button,input,textarea,select{font:inherit} button{cursor:pointer}
+header{background:linear-gradient(135deg,#111827,#312e81 55%,#7c3aed);color:white;padding:28px 18px 30px}
+.wrap{max-width:980px;margin:auto;padding:0 16px}
+.brand{display:flex;align-items:center;justify-content:space-between;gap:12px}.brand h1{font-size:25px;margin:0}.brand p{margin:4px 0 0;color:#ddd;font-size:12px}
+.btn{border:0;border-radius:12px;padding:11px 15px;font-weight:700}.primary{background:white;color:#312e81}.purple{background:var(--accent);color:white}.ghost{background:#f3f4f6;color:#374151}.danger{background:#fee2e2;color:#991b1b}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:22px}.stat{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:13px}.stat b{font-size:24px;display:block}.stat span{font-size:11px;color:#ddd}
+.toolbar{display:flex;gap:9px;flex-wrap:wrap;margin:20px 0}.search{flex:1;min-width:210px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:white}
+.tabs{display:flex;gap:7px;overflow:auto;margin-bottom:14px}.tab{border:0;background:#e5e7eb;padding:9px 14px;border-radius:999px;white-space:nowrap;color:#4b5563}.tab.active{background:#111827;color:white}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}
+.cover{height:125px;background:linear-gradient(135deg,#ddd6fe,#fbcfe8);display:flex;align-items:flex-end;padding:13px;color:#111}.cover .date{background:rgba(255,255,255,.9);border-radius:10px;padding:6px 9px;font-size:12px;font-weight:800}
+.body{padding:15px}.artist{font-size:19px;font-weight:800;margin:0 0 3px}.tour{font-size:13px;color:var(--muted);margin-bottom:10px}.meta{font-size:12px;color:#4b5563;line-height:1.7}.tags{display:flex;gap:5px;flex-wrap:wrap;margin:10px 0}.tag{font-size:10px;padding:4px 7px;border-radius:999px;background:#f3f4f6}.stars{color:#f59e0b;letter-spacing:1px}.actions{display:flex;gap:7px;margin-top:12px}.actions button{flex:1;padding:8px;border:0;border-radius:9px;font-size:12px;font-weight:700}
+.empty{text-align:center;background:white;border:1px dashed #d1d5db;border-radius:18px;padding:45px 20px;color:var(--muted)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.48);display:none;align-items:flex-end;justify-content:center;z-index:10}.modal.show{display:flex}.sheet{background:white;width:min(720px,100%);max-height:94vh;overflow:auto;border-radius:22px 22px 0 0;padding:20px 18px 28px}.sheet h2{margin:0 0 16px}.close{float:right;border:0;background:#f3f4f6;border-radius:50%;width:34px;height:34px}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{display:flex;flex-direction:column;gap:5px}.field.full{grid-column:1/-1}.field label{font-size:12px;font-weight:800;color:#4b5563}.field input,.field textarea,.field select{border:1px solid var(--line);border-radius:10px;padding:10px;background:#fafafa}.field textarea{min-height:90px;resize:vertical}.checkrow{display:flex;gap:14px;flex-wrap:wrap}.checkrow label{font-size:13px}.formactions{display:flex;gap:8px;margin-top:18px}.formactions button{flex:1}
+@media(max-width:650px){.grid{grid-template-columns:1fr}.formgrid{grid-template-columns:1fr}.field.full{grid-column:auto}.stats{grid-template-columns:repeat(3,1fr)}.stat b{font-size:20px}}
+</style>
+
+<style>
+.detail{display:none}.detail.show{display:block}
+.back{margin:16px 0}.heroDetail{background:white;border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:var(--shadow)}
+.heroPhoto{height:230px;background:linear-gradient(135deg,#ddd6fe,#fbcfe8);background-size:cover;background-position:center;display:flex;align-items:flex-end;padding:16px}
+.heroPhoto .date{background:rgba(255,255,255,.92);border-radius:10px;padding:7px 10px;font-weight:800;font-size:12px}
+.detailBody{padding:20px}.detailArtist{font-size:30px;font-weight:900;margin:0}.detailTour{color:var(--muted);margin:4px 0 16px}.infoGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:15px 0}.infoBox{background:#f8fafc;border-radius:12px;padding:11px;font-size:13px}.infoBox b{display:block;font-size:11px;color:var(--muted);margin-bottom:3px}.section{margin-top:22px}.section h3{font-size:16px;margin:0 0 9px}.setlist{white-space:pre-wrap;line-height:1.9;background:#f8fafc;border-radius:14px;padding:14px;font-size:13px}.memo{white-space:pre-wrap;line-height:1.8;font-size:14px}
+.panel{background:white;border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:15px}.panel h2{font-size:18px;margin:0 0 12px}
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}.calHead{font-size:10px;color:var(--muted);text-align:center;padding:4px}.day{min-height:55px;background:#f8fafc;border-radius:9px;padding:5px;font-size:11px}.day.empty{background:transparent}.day.has{background:#ede9fe;color:#4c1d95;font-weight:800;cursor:pointer}.day small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:4px}
+.artistRows{display:grid;gap:8px}.artistRow{display:flex;align-items:center;gap:10px;background:#f8fafc;border-radius:10px;padding:10px}.artistName{flex:1;font-weight:700}.bar{height:8px;background:#ddd6fe;border-radius:99px;width:30%;overflow:hidden}.bar i{display:block;height:100%;background:#7c3aed}
+.gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.gallery img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;cursor:pointer}
+.viewToggle{display:flex;gap:7px;margin:0 0 15px}.viewToggle button.active{background:#111827;color:white}
+@media(max-width:650px){.infoGrid{grid-template-columns:1fr 1fr}.gallery{grid-template-columns:repeat(2,1fr)}.heroPhoto{height:180px}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div id="authView" style="position:fixed;inset:0;background:linear-gradient(135deg,#111827,#312e81 55%,#7c3aed);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px">
+<div style="width:min(420px,100%);background:white;border-radius:24px;padding:28px;box-shadow:0 25px 70px rgba(0,0,0,.28)">
+<h1 style="margin:0 0 5px">🎸 LIVE LOG</h1><p style="color:#6b7280;font-size:13px">ログインしてライブ記録を使うで。</p>
+<input id="authEmail" type="email" placeholder="メールアドレス" style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:11px;margin:7px 0">
+<input id="authPassword" type="password" placeholder="パスワード" style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:11px;margin:7px 0">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+<button class="btn purple" onclick="login()">ログイン</button><button class="btn ghost" onclick="signup()">新規登録</button></div>
+<div id="authMsg" style="min-height:20px;margin-top:12px;font-size:12px;color:#6b7280"></div>
+</div></div>
+<header>
+<div class="wrap">
+  <div class="brand">
+    <div><h1>🎸 LIVE LOG</h1><p>ライブの思い出を、あとから見返せる場所。</p><div style="font-size:11px;margin-top:7px"><span id="userEmail"></span> <button onclick="logout()" style="margin-left:6px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.1);color:white;border-radius:8px;padding:5px 8px">ログアウト</button></div></div>
+    <button class="btn primary" onclick="openForm()">＋ ライブを記録</button>
+  </div>
+  <div class="stats">
+    <div class="stat"><b id="count">0</b><span>参戦ライブ</span></div>
+    <div class="stat"><b id="artists">0</b><span>アーティスト</span></div>
+    <div class="stat"><b id="yearCount">0</b><span id="yearLabel">今年</span></div>
+  </div>
+</div>
+</header>
+
+
+<main class="wrap">
+  <div id="mainView">
+
+  <div class="toolbar">
+    <input id="search" class="search" placeholder="アーティスト・会場・ツアー名で検索…" oninput="render()">
+    <button class="btn ghost" onclick="showStats()">📊 データを見る</button>
+    <button class="btn ghost" onclick="seed()">サンプルを入れる</button>
+  </div>
+  <div class="tabs">
+    <button class="tab active" data-filter="all" onclick="setFilter('all')">すべて</button>
+    <button class="tab" data-filter="upcoming" onclick="setFilter('upcoming')">これから</button>
+    <button class="tab" data-filter="past" onclick="setFilter('past')">参戦済み</button>
+  </div>
+  <section id="list" class="grid"></section>
+
+  </div>
+  <div id="detailView" class="detail">
+    <button class="btn ghost back" onclick="showMain()">← 一覧に戻る</button>
+    <div id="detailContent"></div>
+  </div>
+  <div id="statsView" class="detail">
+    <button class="btn ghost back" onclick="showMain()">← 一覧に戻る</button>
+    <div class="panel"><h2>📊 参戦データ</h2><div id="statsContent"></div></div>
+  </div>
+</main>
+
+<div id="modal" class="modal" onclick="if(event.target===this)closeForm()">
+<div class="sheet">
+  <button class="close" onclick="closeForm()">×</button>
+  <h2 id="formTitle">ライブを記録</h2>
+  <form id="form" onsubmit="save(event)">
+    <div class="formgrid">
+      <div class="field"><label>アーティスト名 *</label><input id="artist" required placeholder="[Alexandros]"></div>
+      <div class="field"><label>ライブ／ツアー名</label><input id="tour" placeholder="METROCK 2026"></div>
+      <div class="field"><label>日付 *</label><input id="date" type="date" required></div>
+      <div class="field"><label>会場</label><input id="venue" placeholder="海の森公園"></div>
+      <div class="field"><label>座席</label><input id="seat" placeholder="スタンディング／○列○番"></div>
+      <div class="field"><label>一緒に行った人</label><input id="with" placeholder="友達、ひとり など"></div>
+      <div class="field"><label>満足度</label><select id="rating"><option value="5">★★★★★</option><option value="4">★★★★☆</option><option value="3">★★★☆☆</option><option value="2">★★☆☆☆</option><option value="1">★☆☆☆☆</option></select></div>
+      <div class="field"><label>次回も行きたい？</label><select id="again"><option>ぜひ行きたい</option><option>機会があれば</option><option>今回だけ</option></select></div>
+      <div class="field full"><label>特に印象に残った曲</label><input id="songs" placeholder="ワタリドリ、閃光 など"></div>
+      <div class="field full"><label>セトリ</label><textarea id="setlist" placeholder="1. ○○&#10;2. ○○&#10;3. ○○"></textarea></div>
+      <div class="field full"><label>ライブの感想</label><textarea id="memo" placeholder="今日の感想、MC、演出、泣いたところ…"></textarea></div>
+      <div class="field full"><label>写真</label><input id="photo" type="file" accept="image/*"><small style="color:#6b7280">※現バージョンでは写真はこの端末に保存、ライブ情報はSupabaseに保存。</small></div>
+    </div>
+    <div class="formactions">
+      <button type="button" class="btn ghost" onclick="closeForm()">キャンセル</button>
+      <button class="btn purple">保存する</button>
+    </div>
+  </form>
+</div>
+</div>
+
+<script>
+const SUPABASE_URL='https://wakvvivudosvaaqubkat.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY='sb_publishable_QMsrotFZGA7ZqvH6K5t6rQ_0-ITixIF';
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+let logs=[],editing=null,filter='all',currentUser=null;
+const $=id=>document.getElementById(id);
+function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function photoMap(){try{return JSON.parse(localStorage.getItem('liveLogPhotos')||'{}')}catch(e){return {}}}
+function getPhoto(x){return x.photo||photoMap()[x.id]||''}
+function msg(s){$('authMsg').textContent=s||''}
+async function login(){const email=$('authEmail').value.trim(),password=$('authPassword').value;if(!email||!password)return msg('メールアドレスとパスワードを入力してな。');msg('ログイン中…');const r=await sb.auth.signInWithPassword({email,password});if(r.error)msg(r.error.message)}
+async function signup(){const email=$('authEmail').value.trim(),password=$('authPassword').value;if(!email||!password)return msg('メールアドレスとパスワードを入力してな。');if(password.length<6)return msg('パスワードは6文字以上にしてな。');msg('登録中…');const r=await sb.auth.signUp({email,password});if(r.error)msg(r.error.message);else msg(r.data.session?'登録完了！':'確認メールが届いたらメール内のリンクを押してからログインしてな。')}
+async function logout(){await sb.auth.signOut()}
+async function loadLogs(){const r=await sb.from('live_logs').select('*').order('date',{ascending:false}).order('created_at',{ascending:false});if(r.error)return alert('読み込み失敗：\n'+r.error.message);logs=(r.data||[]).map(x=>({...x,with:x.with_person||''}));render()}
+function setFilter(f){filter=f;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.filter===f));render()}
+function openForm(id=null){editing=id;$('formTitle').textContent=id?'ライブ記録を編集':'ライブを記録';$('form').reset();if(id){const x=logs.find(a=>String(a.id)===String(id));['artist','tour','date','venue','seat','with','rating','again','songs','setlist','memo'].forEach(k=>$(k).value=x?.[k]||'')}else $('date').value=new Date().toISOString().slice(0,10);$('modal').classList.add('show')}
+function closeForm(){$('modal').classList.remove('show')}
+async function save(e){e.preventDefault();const p={artist:$('artist').value.trim(),tour:$('tour').value.trim(),date:$('date').value,venue:$('venue').value.trim(),seat:$('seat').value.trim(),with_person:$('with').value.trim(),rating:+$('rating').value,again:$('again').value,songs:$('songs').value.trim(),setlist:$('setlist').value,memo:$('memo').value};let r;if(editing)r=await sb.from('live_logs').update(p).eq('id',editing).select().single();else{p.user_id=currentUser.id;r=await sb.from('live_logs').insert(p).select().single()}if(r.error)return alert('保存失敗：\n'+r.error.message);const f=$('photo').files[0];if(f&&r.data?.id){const rd=new FileReader();rd.onload=()=>{const m=photoMap();m[r.data.id]=rd.result;localStorage.setItem('liveLogPhotos',JSON.stringify(m))};rd.readAsDataURL(f)}await loadLogs();closeForm()}
+async function del(id){if(!confirm('このライブ記録を削除する？'))return;const r=await sb.from('live_logs').delete().eq('id',id);if(r.error)return alert('削除失敗：\n'+r.error.message);const m=photoMap();delete m[id];localStorage.setItem('liveLogPhotos',JSON.stringify(m));await loadLogs();if($('detailView').classList.contains('show'))showMain()}
+function card(x){const past=x.date<=new Date().toISOString().slice(0,10),p=getPhoto(x);return `<article class="card"><div class="cover" ${p?`style="background-image:url('${p}');background-size:cover;background-position:center"`:''}><span class="date">${esc(x.date||'日付未設定')}</span></div><div class="body"><div class="artist">${esc(x.artist)}</div><div class="tour">${esc(x.tour||'ライブ')}</div><div class="meta">${x.venue?'📍 '+esc(x.venue)+'<br>':''}${x.seat?'💺 '+esc(x.seat)+'<br>':''}${x.with?'👥 '+esc(x.with):''}</div><div class="tags"><span class="tag">${past?'参戦済み':'これから'}</span>${x.songs?`<span class="tag">🎵 ${esc(x.songs)}</span>`:''}</div><div class="stars">${'★'.repeat(+x.rating||0)}${'☆'.repeat(5-(+x.rating||0))}</div><div class="actions"><button class="ghost" onclick="showDetail('${x.id}')">詳細</button><button class="ghost" onclick="openForm('${x.id}')">編集</button><button class="danger" onclick="del('${x.id}')">削除</button></div></div></article>`}
+function showMain(){$('mainView').style.display='block';$('detailView').classList.remove('show');$('statsView').classList.remove('show')}
+function showDetail(id){const x=logs.find(a=>String(a.id)===String(id));if(!x)return;$('mainView').style.display='none';$('statsView').classList.remove('show');$('detailView').classList.add('show');const p=getPhoto(x);$('detailContent').innerHTML=`<article class="heroDetail"><div class="heroPhoto" ${p?`style="background-image:url('${p}')"`:''}><span class="date">${esc(x.date)}</span></div><div class="detailBody"><h1 class="detailArtist">${esc(x.artist)}</h1><div class="detailTour">${esc(x.tour||'ライブ')}</div><div class="stars">${'★'.repeat(+x.rating||0)}${'☆'.repeat(5-(+x.rating||0))}</div><div class="infoGrid"><div class="infoBox"><b>会場</b>${esc(x.venue||'—')}</div><div class="infoBox"><b>座席</b>${esc(x.seat||'—')}</div><div class="infoBox"><b>一緒に行った人</b>${esc(x.with||'—')}</div><div class="infoBox"><b>次回も行きたい？</b>${esc(x.again||'—')}</div></div>${x.songs?`<div class="section"><h3>🎵 特に印象に残った曲</h3><div class="memo">${esc(x.songs)}</div></div>`:''}${x.setlist?`<div class="section"><h3>📋 セトリ</h3><div class="setlist">${esc(x.setlist)}</div></div>`:''}${x.memo?`<div class="section"><h3>💭 ライブの感想</h3><div class="memo">${esc(x.memo)}</div></div>`:''}<div class="actions"><button class="btn purple" onclick="openForm('${x.id}')">編集する</button><button class="btn danger" onclick="del('${x.id}')">削除</button></div></div></article>`;window.scrollTo({top:0,behavior:'smooth'})}
+function showStats(){$('mainView').style.display='none';$('detailView').classList.remove('show');$('statsView').classList.add('show');const by={};logs.forEach(x=>{if(x.artist)by[x.artist]=(by[x.artist]||0)+1});const a=Object.entries(by).sort((x,y)=>y[1]-x[1]),max=a[0]?.[1]||1;const now=new Date(),y=now.getFullYear(),m=now.getMonth(),first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate();let cal=['日','月','火','水','木','金','土'].map(d=>`<div class="calHead">${d}</div>`).join('');for(let i=0;i<first;i++)cal+='<div class="day empty"></div>';for(let d=1;d<=days;d++){const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`,x=logs.find(z=>z.date===ds);cal+=`<div class="day ${x?'has':''}" ${x?`onclick="showDetail('${x.id}')"`:''}>${d}${x?`<small>${esc(x.artist)}</small>`:''}</div>`}$('statsContent').innerHTML=`<div class="stats" style="background:#111827;padding:10px;border-radius:15px;margin-bottom:18px"><div class="stat"><b>${logs.length}</b><span>総参戦数</span></div><div class="stat"><b>${Object.keys(by).length}</b><span>アーティスト</span></div><div class="stat"><b>${logs.filter(x=>(x.date||'').startsWith(y+'')).length}</b><span>${y}年</span></div></div><h3>🗓️ ${y}年${m+1}月</h3><div class="calendar">${cal}</div><div class="section"><h3>🎤 アーティスト別</h3><div class="artistRows">${a.map(([n,c])=>`<div class="artistRow"><span class="artistName">${esc(n)}</span><div class="bar"><i style="width:${c/max*100}%"></i></div><b>${c}回</b></div>`).join('')||'まだ記録がないで！'}</div></div><div class="section"><h3>📷 写真アルバム</h3><div class="gallery">${logs.filter(x=>getPhoto(x)).map(x=>`<img src="${getPhoto(x)}" onclick="showDetail('${x.id}')">`).join('')||'<p class="meta">写真を登録するとここに並ぶで。</p>'}</div></div>`}
+function render(){const q=($('search')?.value||'').toLowerCase();let a=logs.filter(x=>(x.artist+' '+x.tour+' '+x.venue+' '+x.memo).toLowerCase().includes(q));const t=new Date().toISOString().slice(0,10);if(filter==='past')a=a.filter(x=>x.date<=t);if(filter==='upcoming')a=a.filter(x=>x.date>t);a.sort((x,y)=>y.date.localeCompare(x.date));$('list').innerHTML=a.length?a.map(card).join(''):`<div class="empty" style="grid-column:1/-1"><div style="font-size:38px">🎫</div><h3>まだライブ記録がないで！</h3><p>「＋ ライブを記録」から、思い出を残してみよ。</p></div>`;$('count').textContent=logs.length;$('artists').textContent=new Set(logs.map(x=>x.artist).filter(Boolean)).size;const y=new Date().getFullYear();$('yearCount').textContent=logs.filter(x=>(x.date||'').startsWith(y+'')).length;$('yearLabel').textContent=y+'年'}
+function seed(){alert('Supabase版ではサンプル投入を無効にしてるで。実データだけを保存する仕様や。')}
+async function start(user){currentUser=user;$('authView').style.display='none';$('userEmail').textContent=user.email||'';await loadLogs()}
+sb.auth.onAuthStateChange((e,s)=>{if(s?.user)start(s.user);else{$('authView').style.display='flex';$('userEmail').textContent='';logs=[];render()}})
+(async()=>{const r=await sb.auth.getSession();if(r.data.session)await start(r.data.session.user);else $('authView').style.display='flex'})()
+</script>
+</body>
+</html>
