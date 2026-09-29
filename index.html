@@ -170,14 +170,20 @@ sb.auth.onAuthStateChange((e,s)=>{if(s?.user)start(s.user);else{$('authView').st
     festWrap.id='festivalFields';
     festWrap.className='field full';
     festWrap.style.display='none';
-    festWrap.innerHTML='<label>見たアーティスト</label><textarea id="festivalArtists" placeholder="1行に1組ずつ入力してな。&#10;[Alexandros]&#10;SHISHAMO&#10;キタニタツヤ"></textarea><div class="festivalHelp">ここで登録したアーティストは、フェス詳細から個別に開いて、そのアーティスト専用のセトリ・印象に残った曲・感想を記録できるで。</div>';
+    festWrap.innerHTML='<label>見たアーティスト</label><div id="festivalArtistRows" class="festivalArtistInputs"></div><button type="button" class="ghost" onclick="addFestivalArtistRow()">＋ アーティストを追加</button><div class="festivalHelp">1組ずつ入力できるで。出演時間とステージもここで登録できて、フェス詳細ではタイムテーブル順に表示するで。</div>';
     form.querySelector('.formgrid').insertAfter ? null : form.querySelector('.formgrid').insertBefore(festWrap,document.getElementById('date').closest('.field'));
     document.getElementById('eventType').addEventListener('change',toggleEventForm);
     const style=document.createElement('style');
-    style.textContent='.festivalHelp{font-size:11px;color:#6b7280;line-height:1.6;margin-top:5px}.festivalBadge{display:inline-block;background:#f3e8ff;color:#6d28d9;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:800}.festivalList{display:grid;gap:8px}.festivalArtist{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:11px}.festivalArtist b{font-size:14px}.festivalArtist small{display:block;color:#6b7280;margin-top:3px}.childBack{margin-bottom:10px}';
+    style.textContent='.festivalArtistInputs{display:grid;gap:8px;margin-bottom:8px}.festivalInputRow{display:grid;grid-template-columns:minmax(120px,1fr) 90px 90px minmax(90px,.7fr) 38px;gap:6px;align-items:center}.festivalInputRow input{min-width:0}.festivalHelp{font-size:11px;color:#6b7280;line-height:1.6;margin-top:5px}.festivalBadge{display:inline-block;background:#f3e8ff;color:#6d28d9;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:800}.festivalList{display:grid;gap:8px}.festivalArtist{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:11px}.festivalArtist b{font-size:14px}.festivalArtist small{display:block;color:#6b7280;margin-top:3px}.childBack{margin-bottom:10px}';
     document.head.appendChild(style);
   }
   function childLogs(parentId){return logs.filter(x=>String(x.parent_id||'')===String(parentId)&&x.event_type==='festival_artist')}
+  window.addFestivalArtistRow=function(v={artist:'',start_time:'',end_time:'',stage:''}){const box=document.getElementById('festivalArtistRows');if(!box)return;const row=document.createElement('div');row.className='festivalInputRow';row.innerHTML='<input class="fa-name" placeholder="アーティスト名" value="'+escAttr(v.artist||'')+'"><input class="fa-start" type="time" value="'+(v.start_time||'')+'"><input class="fa-end" type="time" value="'+(v.end_time||'')+'"><input class="fa-stage" placeholder="ステージ" value="'+escAttr(v.stage||'')+'"><button type="button" class="danger" onclick="this.parentElement.remove()">×</button>';box.appendChild(row)}
+  function escAttr(s){return String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+  function festivalRows(){return [...document.querySelectorAll('#festivalArtistRows .festivalInputRow')].map(r=>({artist:r.querySelector('.fa-name').value.trim(),start_time:r.querySelector('.fa-start').value||null,end_time:r.querySelector('.fa-end').value||null,stage:r.querySelector('.fa-stage').value.trim()||null})).filter(x=>x.artist)}
+  function formatTime(t){return t?String(t).slice(0,5):''}
+  function timetableRows(children){return [...children].sort((a,b)=>((a.start_time||'99:99').localeCompare(b.start_time||'99:99'))||a.artist.localeCompare(b.artist))}
+
   function topLogs(){return logs.filter(x=>x.event_type!=='festival_artist')}
   window.toggleEventForm=function(){
     const festival=document.getElementById('eventType')?.value==='festival' && !window._editingChild;
@@ -199,11 +205,10 @@ sb.auth.onAuthStateChange((e,s)=>{if(s?.user)start(s.user);else{$('authView').st
     if(id){
       const x=logs.find(a=>String(a.id)===String(id));
       et.value=x?.event_type==='festival'?'festival':'one_man';
-      const fa=document.getElementById('festivalArtists');
-      if(fa && x?.event_type==='festival') fa.value=childLogs(x.id).map(a=>a.artist).join('\n');
+      const box=document.getElementById('festivalArtistRows');if(box){box.innerHTML='';if(x?.event_type==='festival'){childLogs(x.id).forEach(a=>addFestivalArtistRow({artist:a.artist,start_time:a.start_time,end_time:a.end_time,stage:a.stage}))}}
     }else{
       et.value='one_man';
-      document.getElementById('festivalArtists').value='';
+      const box=document.getElementById('festivalArtistRows');if(box){box.innerHTML='';addFestivalArtistRow()}
     }
     toggleEventForm();
     if(child){
@@ -223,19 +228,19 @@ sb.auth.onAuthStateChange((e,s)=>{if(s?.user)start(s.user);else{$('authView').st
       p.event_type='festival_artist';
       r=await sb.from('live_logs').update(p).eq('id',editing).select().single();
     }else if(type==='festival'){
-      const names=[...new Set(document.getElementById('festivalArtists').value.split(/\r?\n|,/).map(s=>s.trim()).filter(Boolean))];
+      const rows=festivalRows();
       if(!p.artist)return alert('フェス名を入力してな。');
-      if(!names.length)return alert('見たアーティストを1組以上入力してな。');
+      if(!rows.length)return alert('見たアーティストを1組以上入力してな。');
       p.event_type='festival';
       if(editing){
         r=await sb.from('live_logs').update(p).eq('id',editing).select().single();
         if(!r.error){
           const existing=childLogs(editing);
-          const keep=new Set(names);
+          const keep=new Set(rows.map(x=>x.artist));
           const remove=existing.filter(x=>!keep.has(x.artist)).map(x=>x.id);
           if(remove.length){const dr=await sb.from('live_logs').delete().in('id',remove);if(dr.error)return alert('アーティスト削除に失敗：\n'+dr.error.message);}
           const have=new Set(existing.map(x=>x.artist));
-          const add=names.filter(n=>!have.has(n)).map(n=>({user_id:currentUser.id,parent_id:editing,event_type:'festival_artist',artist:n,tour:p.tour,date:p.date,venue:p.venue,seat:p.seat,with_person:p.with_person,rating:5,again:'機会があれば',songs:'',setlist:'',memo:''}));
+          const add=rows.filter(x=>!have.has(x.artist)).map(x=>({user_id:currentUser.id,parent_id:editing,event_type:'festival_artist',artist:x.artist,tour:p.tour,date:p.date,venue:p.venue,seat:p.seat,with_person:p.with_person,rating:5,again:'機会があれば',songs:'',setlist:'',memo:'',start_time:x.start_time,end_time:x.end_time,stage:x.stage}));
           if(add.length){const ar=await sb.from('live_logs').insert(add);if(ar.error)return alert('アーティスト追加に失敗：\n'+ar.error.message);}
         }
       }else{
@@ -243,7 +248,7 @@ sb.auth.onAuthStateChange((e,s)=>{if(s?.user)start(s.user);else{$('authView').st
         r=await sb.from('live_logs').insert(p).select().single();
         if(!r.error){
           const parent=r.data;
-          const children=names.map(n=>({user_id:currentUser.id,parent_id:parent.id,event_type:'festival_artist',artist:n,tour:p.tour,date:p.date,venue:p.venue,seat:p.seat,with_person:p.with_person,rating:5,again:'機会があれば',songs:'',setlist:'',memo:''}));
+          const children=rows.map(x=>({user_id:currentUser.id,parent_id:parent.id,event_type:'festival_artist',artist:x.artist,tour:p.tour,date:p.date,venue:p.venue,seat:p.seat,with_person:p.with_person,rating:5,again:'機会があれば',songs:'',setlist:'',memo:'',start_time:x.start_time,end_time:x.end_time,stage:x.stage}));
           const ar=await sb.from('live_logs').insert(children);
           if(ar.error)return alert('アーティスト登録に失敗：\n'+ar.error.message);
         }
@@ -268,7 +273,8 @@ sb.auth.onAuthStateChange((e,s)=>{if(s?.user)start(s.user);else{$('authView').st
     const p=getPhoto(x);
     if(x.event_type==='festival'){
       const children=childLogs(x.id);
-      $('detailContent').innerHTML='<article class="heroDetail"><div class="heroPhoto" '+(p?'style="background-image:url(\''+p+'\')"':'')+'><span class="date">'+esc(x.date)+'</span></div><div class="detailBody"><div class="festivalBadge">🎪 FESTIVAL</div><h1 class="detailArtist" style="margin-top:8px">'+esc(x.artist)+'</h1><div class="detailTour">'+esc(x.tour||'フェス')+'</div><div class="stars">'+'★'.repeat(+x.rating||0)+'☆'.repeat(5-(+x.rating||0))+'</div><div class="infoGrid"><div class="infoBox"><b>会場</b>'+esc(x.venue||'—')+'</div><div class="infoBox"><b>座席</b>'+esc(x.seat||'—')+'</div><div class="infoBox"><b>一緒に行った人</b>'+esc(x.with||'—')+'</div><div class="infoBox"><b>見たアーティスト</b>'+children.length+'組</div></div><div class="section"><h3>🎤 見たアーティスト</h3><div class="festivalList">'+(children.map(a=>'<div class="festivalArtist"><div><b>'+esc(a.artist)+'</b><small>'+parseSetlist(a.setlist||'').length+'曲のセトリ'+(a.memo?' ・感想あり':'')+'</small></div><button class="btn purple" onclick="showDetail(\''+a.id+'\')">詳細を見る</button></div>').join('')||'<div class="setlistEmpty">まだ登録されてへんで。</div>')+'</div></div>'+(x.memo?'<div class="section"><h3>💭 フェス全体の感想</h3><div class="memo">'+esc(x.memo)+'</div></div>':'')+'<div class="actions"><button class="btn purple" onclick="openForm(\''+x.id+'\')">フェスを編集</button><button class="btn danger" onclick="del(\''+x.id+'\')">削除</button></div></div></article>';
+      const ordered=timetableRows(children);
+      $('detailContent').innerHTML='<article class="heroDetail"><div class="heroPhoto" '+(p?'style="background-image:url(\''+p+'\')"':'')+'><span class="date">'+esc(x.date)+'</span></div><div class="detailBody"><div class="festivalBadge">🎪 FESTIVAL</div><h1 class="detailArtist" style="margin-top:8px">'+esc(x.artist)+'</h1><div class="detailTour">'+esc(x.tour||'フェス')+'</div><div class="stars">'+'★'.repeat(+x.rating||0)+'☆'.repeat(5-(+x.rating||0))+'</div><div class="infoGrid"><div class="infoBox"><b>会場</b>'+esc(x.venue||'—')+'</div><div class="infoBox"><b>座席</b>'+esc(x.seat||'—')+'</div><div class="infoBox"><b>一緒に行った人</b>'+esc(x.with||'—')+'</div><div class="infoBox"><b>見たアーティスト</b>'+children.length+'組</div></div><div class="section"><h3>🕒 タイムテーブル</h3><div class="festivalList">'+(ordered.map(a=>'<div class="festivalArtist"><div><b>'+esc(a.artist)+'</b><small>'+((formatTime(a.start_time)||'時間未登録')+(a.end_time?'〜'+formatTime(a.end_time):''))+(a.stage?' ・ '+esc(a.stage):'')+'<br>'+parseSetlist(a.setlist||'').length+'曲のセトリ'+(a.memo?' ・感想あり':'')+'</small></div><button class="btn purple" onclick="showDetail(\''+a.id+'\')">詳細を見る</button></div>').join('')||'<div class="setlistEmpty">まだ登録されてへんで。</div>')+'</div></div>'+(x.memo?'<div class="section"><h3>💭 フェス全体の感想</h3><div class="memo">'+esc(x.memo)+'</div></div>':'')+'<div class="actions"><button class="btn purple" onclick="openForm(\''+x.id+'\')">フェスを編集</button><button class="btn danger" onclick="del(\''+x.id+'\')">削除</button></div></div></article>';
     }else{
       const parent=x.parent_id?logs.find(a=>String(a.id)===String(x.parent_id)):null;
       $('detailContent').innerHTML='<article class="heroDetail"><div class="heroPhoto" '+(p?'style="background-image:url(\''+p+'\')"':'')+'><span class="date">'+esc(x.date)+'</span></div><div class="detailBody">'+(parent?'<button class="btn ghost childBack" onclick="showDetail(\''+parent.id+'\')">← '+esc(parent.artist)+' に戻る</button><div class="festivalBadge">🎪 フェス内アーティスト</div>':'')+'<h1 class="detailArtist">'+esc(x.artist)+'</h1><div class="detailTour">'+esc(x.tour||'ライブ')+'</div><div class="stars">'+'★'.repeat(+x.rating||0)+'☆'.repeat(5-(+x.rating||0))+'</div><div class="infoGrid"><div class="infoBox"><b>会場</b>'+esc(x.venue||'—')+'</div><div class="infoBox"><b>座席</b>'+esc(x.seat||'—')+'</div><div class="infoBox"><b>一緒に行った人</b>'+esc(x.with||'—')+'</div><div class="infoBox"><b>次回も行きたい？</b>'+esc(x.again||'—')+'</div></div>'+(x.songs?'<div class="section"><h3>🎵 特に印象に残った曲</h3><div class="memo">'+esc(x.songs)+'</div></div>':'')+(x.setlist?'<div class="section"><h3>📋 セトリ</h3><div class="setlist">'+parseSetlist(x.setlist).map((song,i)=>'<div class="setlistItem"><span class="setlistNo">'+(i+1)+'.</span><span class="setlistSong">'+esc(song)+'</span></div>').join('')+'</div></div>':'')+(x.memo?'<div class="section"><h3>💭 ライブの感想</h3><div class="memo">'+esc(x.memo)+'</div></div>':'')+'<div class="actions"><button class="btn purple" onclick="openForm(\''+x.id+'\','+(!!parent)+')">編集する</button><button class="btn danger" onclick="del(\''+x.id+'\')">削除</button></div></div></article>';
