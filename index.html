@@ -142,7 +142,7 @@ header{background:linear-gradient(135deg,#111827,#312e81 55%,#7c3aed);color:whit
             <div class="field full"><label>特に印象に残った曲</label><input id="songs" placeholder="ワタリドリ、閃光 など"></div>
       <div class="field full"><label>セトリ</label><div id="setlistEditor" class="setlistEditor"></div><textarea id="setlist" style="display:none"></textarea><div class="setlistHint">曲順どおりに1曲ずつ追加できるで。↑↓で順番も入れ替え可能。</div></div>
       <div class="field full"><label>ライブの感想</label><textarea id="memo" placeholder="今日の感想、MC、演出、泣いたところ…"></textarea></div>
-      <div class="field full"><label>写真</label><input id="photo" type="file" accept="image/*"><small style="color:#6b7280">※写真もSupabaseに保存されるので、PCやスマホから同じライブ写真を見られるで。</small></div>
+      <div class="field full"><label>写真</label><input id="photo" type="file" accept="image/*"><small style="color:#6b7280">※写真はSupabaseに保存されるので、PCやスマホから同じライブ写真を見られるで。編集時に写真を選び直すと差し替えできるで。</small></div>
     </div>
     <div class="formactions">
       <button type="button" class="btn ghost" onclick="closeForm()">キャンセル</button>
@@ -208,14 +208,14 @@ async function hydratePhotoUrls(){
 }
 async function uploadPhotoForLog(id,file){
   if(!file||!currentUser)return;
-  const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
-  const path=currentUser.id+'/'+id+'.'+ext;
-  const old=logs.find(x=>String(x.id)===String(id))?.photo_path||'';
-  const up=await sb.storage.from('live-photos').upload(path,file,{upsert:true,contentType:file.type||'image/jpeg'});
-  if(up.error)throw up.error;
-  const ur=await sb.from('live_logs').update({photo_path:path}).eq('id',id);
-  if(ur.error)throw ur.error;
-  if(old&&old!==path)await sb.storage.from('live-photos').remove([old]);
+  const fd=new FormData();
+  fd.append('id',id);
+  fd.append('file',file);
+  const {data,error}=await sb.functions.invoke('upload-live-photo',{body:fd});
+  if(error)throw error;
+  if(!data?.path)throw new Error('写真の保存先を取得できへんかったで');
+  const x=logs.find(v=>String(v.id)===String(id));
+  if(x){x.photo_path=data.path;x.photo=data.signedUrl||''}
 }
 async function syncLocalPhotos(){
   const m=photoMap();
@@ -259,7 +259,7 @@ function moveSetlist(i,dir){const arr=setlistValues();const j=i+dir;if(j<0||j>=a
 function syncSetlist(){const arr=setlistValues();$('setlist').value=arr.map((v,i)=>`${i+1}. ${v}`).join('\n')}
 function openForm(id=null){editing=id;$('formTitle').textContent=id?'ライブ記録を編集':'ライブを記録';$('form').reset();if(id){const x=logs.find(a=>String(a.id)===String(id));['artist','tour','date','venue','seat','with','rating','songs','memo'].forEach(k=>$(k).value=x?.[k]||'');renderSetlistEditor(parseSetlist(x?.setlist||''))}else{$('date').value=new Date().toISOString().slice(0,10);renderSetlistEditor([])}$('modal').classList.add('show')}
 function closeForm(){$('modal').classList.remove('show')}
-async function save(e){e.preventDefault();syncSetlist();const p={artist:$('artist').value.trim(),tour:$('tour').value.trim(),date:$('date').value,venue:$('venue').value.trim(),seat:$('seat').value.trim(),with_person:$('with').value.trim(),rating:+$('rating').value,songs:$('songs').value.trim(),setlist:$('setlist').value,memo:$('memo').value};let r;if(editing)r=await sb.from('live_logs').update(p).eq('id',editing).select().single();else{p.user_id=currentUser.id;r=await sb.from('live_logs').insert(p).select().single()}if(r.error)return alert('保存失敗：\n'+r.error.message);const f=$('photo').files[0];if(f&&r.data?.id){const rd=new FileReader();rd.onload=()=>{const m=photoMap();m[r.data.id]=rd.result;localStorage.setItem('liveLogPhotos',JSON.stringify(m))};rd.readAsDataURL(f)}await loadLogs();closeForm()}
+async function save(e){e.preventDefault();syncSetlist();const p={artist:$('artist').value.trim(),tour:$('tour').value.trim(),date:$('date').value,venue:$('venue').value.trim(),seat:$('seat').value.trim(),with_person:$('with').value.trim(),rating:+$('rating').value,songs:$('songs').value.trim(),setlist:$('setlist').value,memo:$('memo').value};let r;if(editing)r=await sb.from('live_logs').update(p).eq('id',editing).select().single();else{p.user_id=currentUser.id;r=await sb.from('live_logs').insert(p).select().single()}if(r.error)return alert('保存失敗：\n'+r.error.message);const f=$('photo').files[0];if(f&&r.data?.id){try{await uploadPhotoForLog(r.data.id,f)}catch(err){return alert('ライブは保存できたけど、写真の保存に失敗したで。\n'+(err?.message||err))}}await loadLogs();closeForm()}
 async function del(id){if(!confirm('このライブ記録を削除する？'))return;const r=await sb.from('live_logs').delete().eq('id',id);if(r.error)return alert('削除失敗：\n'+r.error.message);const m=photoMap();delete m[id];localStorage.setItem('liveLogPhotos',JSON.stringify(m));await loadLogs();if($('detailView').classList.contains('show'))showMain()}
 function card(x){const past=x.date<=new Date().toISOString().slice(0,10),p=getPhoto(x);return `<article class="card"><div class="cover" ${p?`style="background-image:url('${p}');background-size:cover;background-position:center"`:''}><span class="date">${esc(x.date||'日付未設定')}</span></div><div class="body"><div class="artist">${esc(x.artist)}</div><div class="tour">${esc(x.tour||'ライブ')}</div><div class="meta">${x.venue?'📍 '+esc(x.venue)+'<br>':''}${x.seat?'💺 '+esc(x.seat)+'<br>':''}${x.with?'👥 '+esc(x.with):''}</div><div class="tags"><span class="tag">${past?'参戦済み':'これから'}</span>${x.songs?`<span class="tag">🎵 ${esc(x.songs)}</span>`:''}</div><div class="stars">${'★'.repeat(+x.rating||0)}${'☆'.repeat(5-(+x.rating||0))}</div><div class="actions"><button class="ghost" onclick="showDetail('${x.id}')">詳細</button><button class="ghost" onclick="openForm('${x.id}')">編集</button><button class="danger" onclick="del('${x.id}')">削除</button></div></div></article>`}
 function showMain(){$('mainView').style.display='block';$('detailView').classList.remove('show');$('statsView').classList.remove('show')}
