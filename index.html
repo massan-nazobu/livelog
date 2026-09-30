@@ -167,8 +167,14 @@ async function processChatImport(){
     const payload=JSON.parse(json);
     if(!payload||!payload.artist||!payload.date)return;
     const label=[payload.artist,payload.tour,payload.date,payload.venue].filter(Boolean).join(' / ');
-    const ok=confirm('このライブをLIVE LOGに登録するで。\\n\\n'+label+'\\n\\n登録してええ？');
-    if(!ok){history.replaceState(null,'',location.pathname+location.search);return}
+    const {data:errorCheckData,error:errorCheck}=await sb.from('live_logs').select('id').eq('artist',payload.artist).eq('date',payload.date).eq('event_type',payload.event_type||'one_man').limit(1);
+    if(errorCheck) throw errorCheck;
+    if(errorCheckData?.length){
+      history.replaceState(null,'',location.pathname+location.search);
+      alert('このライブはもう登録済みやで。\\n'+label);
+      await loadLogs();
+      return;
+    }
     const {data,error}=await sb.functions.invoke('register-live',{body:payload});
     if(error)throw error;
     history.replaceState(null,'',location.pathname+location.search);
