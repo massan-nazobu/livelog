@@ -156,6 +156,30 @@ header{background:linear-gradient(135deg,#111827,#312e81 55%,#7c3aed);color:whit
 const SUPABASE_URL='https://wakvvivudosvaaqubkat.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_QMsrotFZGA7ZqvH6K5t6rQ_0-ITixIF';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+
+async function processChatImport(){
+  const hash=location.hash||'';
+  if(!hash.startsWith('#import='))return;
+  const encoded=hash.slice(8);
+  if(!encoded)return;
+  try{
+    const json=decodeURIComponent(escape(atob(encoded.replace(/-/g,'+').replace(/_/g,'/'))));
+    const payload=JSON.parse(json);
+    if(!payload||!payload.artist||!payload.date)return;
+    const label=[payload.artist,payload.tour,payload.date,payload.venue].filter(Boolean).join(' / ');
+    const ok=confirm('このライブをLIVE LOGに登録するで。\\n\\n'+label+'\\n\\n登録してええ？');
+    if(!ok){history.replaceState(null,'',location.pathname+location.search);return}
+    const {data,error}=await sb.functions.invoke('register-live',{body:payload});
+    if(error)throw error;
+    history.replaceState(null,'',location.pathname+location.search);
+    alert('登録完了やで！\\n'+[data?.data?.artist,data?.data?.date].filter(Boolean).join(' / '));
+    await loadLogs();
+  }catch(err){
+    console.error('Chat import failed',err);
+    alert('登録に失敗したで。\\n'+(err?.message||err));
+    history.replaceState(null,'',location.pathname+location.search);
+  }
+}
 let logs=[],editing=null,filter='all',currentUser=null;
 const $=id=>document.getElementById(id);
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
@@ -231,7 +255,7 @@ function render(){const q=($('search')?.value||'').toLowerCase();let a=logs.filt
 function seed(){alert('Supabase版ではサンプル投入を無効にしてるで。実データだけを保存する仕様や。')}
 async function start(user){currentUser=user;$('authView').style.display='none';$('userEmail').textContent=user.email||'';await loadLogs()}
 sb.auth.onAuthStateChange((e,s)=>{if(s?.user)start(s.user);else{$('authView').style.display='flex';$('userEmail').textContent='';logs=[];render()}})
-(async()=>{const r=await sb.auth.getSession();if(r.data.session)await start(r.data.session.user);else $('authView').style.display='flex'})()
+(async()=>{const r=await sb.auth.getSession();if(r.data.session){await start(r.data.session.user);await processChatImport()}else $('authView').style.display='flex'})()
 </script>
 
 <script>
