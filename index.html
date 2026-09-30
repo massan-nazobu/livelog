@@ -138,7 +138,10 @@ header{background:linear-gradient(135deg,#111827,#312e81 55%,#7c3aed);color:whit
       <div class="field"><label>会場</label><input id="venue" placeholder="海の森公園"></div>
       <div class="field"><label>座席</label><input id="seat" placeholder="スタンディング／○列○番"></div>
       <div class="field"><label>一緒に行った人</label><input id="with" placeholder="友達、ひとり など"></div>
+      <div class="field full"><label>記録タイプ *</label><select id="eventType"><option value="one_man">ワンマンライブ</option><option value="festival">フェス</option></select></div>
+      <div class="field full"><label>参加状況 *</label><select id="status"><option value="planned">📅 参加予定</option><option value="completed">✅ 参戦済み</option></select></div>
       <div class="field"><label>満足度</label><select id="rating"><option value="5">★★★★★</option><option value="4">★★★★☆</option><option value="3">★★★☆☆</option><option value="2">★★☆☆☆</option><option value="1">★☆☆☆☆</option></select></div>
+      <div id="festivalFields" class="field full" style="display:none"></div>
             <div class="field full"><label>特に印象に残った曲</label><input id="songs" placeholder="ワタリドリ、閃光 など"></div>
       <div class="field full"><label>セトリ</label><div id="setlistEditor" class="setlistEditor"></div><textarea id="setlist" style="display:none"></textarea><div class="setlistHint">曲順どおりに1曲ずつ追加できるで。↑↓で順番も入れ替え可能。</div></div>
       <div class="field full"><label>ライブの感想</label><textarea id="memo" placeholder="今日の感想、MC、演出、泣いたところ…"></textarea></div>
@@ -278,21 +281,12 @@ sb.auth.onAuthStateChange(async(e,s)=>{if(s?.user){await start(s.user);await pro
   function initFestivalUI(){
     const form=document.getElementById('form');
     const artistField=document.getElementById('artist')?.closest('.field');
-    if(!form||!artistField||document.getElementById('eventType')) return;
-    const typeWrap=document.createElement('div');
-    typeWrap.className='field full';
-    typeWrap.innerHTML='<label>記録タイプ *</label><select id="eventType"><option value="one_man">ワンマンライブ</option><option value="festival">フェス</option></select>';
-    form.querySelector('.formgrid').insertBefore(typeWrap,artistField);
-    const statusWrap=document.createElement('div');
-    statusWrap.className='field full';
-    statusWrap.innerHTML='<label>参加状況 *</label><select id="status"><option value="planned">📅 参加予定</option><option value="completed">✅ 参戦済み</option></select>';
-    form.querySelector('.formgrid').insertBefore(statusWrap,document.getElementById('date').closest('.field'));
-    const festWrap=document.createElement('div');
-    festWrap.id='festivalFields';
-    festWrap.className='field full';
-    festWrap.style.display='none';
+    if(!form||!artistField)return;
+    const typeSelect=document.getElementById('eventType');
+    const statusSelect=document.getElementById('status');
+    const festWrap=document.getElementById('festivalFields');
+    if(!typeSelect||!statusSelect||!festWrap)return;
     festWrap.innerHTML='<label>見たアーティスト</label><div id="festivalArtistRows" class="festivalArtistInputs"></div><button type="button" class="ghost" onclick="addFestivalArtistRow()">＋ アーティストを追加</button><div class="festivalHelp">1組ずつ入力できるで。出演時間とステージもここで登録できて、フェス詳細ではタイムテーブル順に表示するで。</div>';
-    form.querySelector('.formgrid').insertAfter ? null : form.querySelector('.formgrid').insertBefore(festWrap,document.getElementById('date').closest('.field'));
     document.getElementById('eventType').addEventListener('change',toggleEventForm);
     const style=document.createElement('style');
     style.textContent='.festivalArtistInputs{display:grid;gap:8px;margin-bottom:8px}.festivalInputRow{display:grid;grid-template-columns:minmax(120px,1fr) 90px 90px minmax(90px,.7fr) 38px;gap:6px;align-items:center}.festivalInputRow input{min-width:0}.festivalHelp{font-size:11px;color:#6b7280;line-height:1.6;margin-top:5px}.festivalBadge{display:inline-block;background:#f3e8ff;color:#6d28d9;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:800}.festivalList{display:grid;gap:8px}.festivalArtist{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:11px}.festivalArtist b{font-size:14px}.festivalArtist small{display:block;color:#6b7280;margin-top:3px}.festivalInputRow button{padding:8px 10px}@media(max-width:600px){.festivalInputRow{grid-template-columns:1fr 1fr 1fr 1fr 34px}.festivalInputRow .fa-name{grid-column:1/-1}}.childBack{margin-bottom:10px}';
