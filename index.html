@@ -167,6 +167,14 @@ async function processChatImport(){
     const payload=JSON.parse(json);
     if(!payload||!payload.artist||!payload.date)return;
     const label=[payload.artist,payload.tour,payload.date,payload.venue].filter(Boolean).join(' / ');
+    if(payload._action==='update'&&payload.id){
+      const {data,error}=await sb.functions.invoke('update-live',{body:payload});
+      if(error)throw error;
+      history.replaceState(null,'',location.pathname+location.search);
+      alert('更新完了やで！\\n'+[data?.data?.artist,data?.data?.date].filter(Boolean).join(' / '));
+      await loadLogs();
+      return;
+    }
     const {data:errorCheckData,error:errorCheck}=await sb.from('live_logs').select('id').eq('artist',payload.artist).eq('date',payload.date).eq('event_type',payload.event_type||'one_man').limit(1);
     if(errorCheck) throw errorCheck;
     if(errorCheckData?.length){
