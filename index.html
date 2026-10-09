@@ -488,6 +488,9 @@ sb.auth.onAuthStateChange(async(e,s)=>{if(s?.user){await start(s.user);await pro
     const y=new Date().getFullYear();$('yearCount').textContent=attended.filter(x=>(x.date||'').startsWith(y+'')).length;$('yearLabel').textContent=y+'年';
   };
   initFestivalUI();
+  // Auth/loadLogs may finish before this festival script overrides render();
+  // render once here so the homepage immediately uses the parent-only festival view.
+  if(typeof window.render==='function') window.render();
 })();
 </script>
 </body>
