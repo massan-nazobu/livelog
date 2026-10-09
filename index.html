@@ -262,7 +262,7 @@ function addSetlist(){const arr=setlistValues();arr.push('');renderSetlistEditor
 function removeSetlist(i){const arr=setlistValues();if(arr.length<=1)return;arr.splice(i,1);renderSetlistEditor(arr)}
 function moveSetlist(i,dir){const arr=setlistValues();const j=i+dir;if(j<0||j>=arr.length)return;[arr[i],arr[j]]=[arr[j],arr[i]];renderSetlistEditor(arr)}
 function syncSetlist(){const arr=setlistValues();$('setlist').value=arr.map((v,i)=>`${i+1}. ${v}`).join('\n')}
-function openForm(id=null){editing=id;$('formTitle').textContent=id?'ライブ記録を編集':'ライブを記録';$('form').reset();if(id){const x=logs.find(a=>String(a.id)===String(id));['artist','tour','date','venue','seat','with','rating','songs','memo','chatgptInfo'].forEach(k=>$(k).value=x?.[k]||'');renderSetlistEditor(parseSetlist(x?.setlist||''))}else{$('date').value=new Date().toISOString().slice(0,10);renderSetlistEditor([])}$('modal').classList.add('show')}
+function openForm(id=null){editing=id;$('formTitle').textContent=id?'ライブ記録を編集':'ライブを記録';$('form').reset();if(id){const x=logs.find(a=>String(a.id)===String(id));['artist','tour','date','venue','seat','with','rating','songs','memo'].forEach(k=>$(k).value=x?.[k]||'');$('chatgptInfo').value=x?.chatgpt_info||'';renderSetlistEditor(parseSetlist(x?.setlist||''))}else{$('date').value=new Date().toISOString().slice(0,10);renderSetlistEditor([])}$('modal').classList.add('show')}
 function closeForm(){$('modal').classList.remove('show')}
 async function editField(id,field,label,multiline=false){
  const x=logs.find(a=>String(a.id)===String(id));if(!x)return;
@@ -270,8 +270,8 @@ async function editField(id,field,label,multiline=false){
  const value=prompt(label+'を編集してな。'+(multiline?'（複数行OK）':''),String(current));if(value===null)return;
  const patch={};patch[field]=value;
  if(field==='rating'){patch.rating=value.trim()===''?null:Number(value);if(patch.rating!==null&&(!Number.isInteger(patch.rating)||patch.rating<1||patch.rating>5))return alert('満足度は1〜5で入力してな。');}
- if(field==='date'&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(value))return alert('日付は YYYY-MM-DD 形式で入力してな。');
- if(field==='setlist')patch.setlist=parseSetlist(value).map((song,i)=>(i+1)+'. '+song).join('\\n');
+ if(field==='date'&&!/^\d{4}-\d{2}-\d{2}$/.test(value))return alert('日付は YYYY-MM-DD 形式で入力してな。');
+ if(field==='setlist')patch.setlist=parseSetlist(value).map((song,i)=>(i+1)+'. '+song).join('\n');
  const {error}=await sb.from('live_logs').update(patch).eq('id',id);if(error)return alert('更新に失敗したで：\\n'+error.message);
  await loadLogs();showDetail(id);
 }
