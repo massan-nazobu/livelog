@@ -464,7 +464,7 @@ sb.auth.onAuthStateChange(async(e,s)=>{if(s?.user){await start(s.user);await pro
   };
   function chatgptInfoSection(x){
     const info=x?.chatgpt_info||x?.chatgptInfo||'';
-    return '<div class="section"><h3>🔎 LIVE LOGプチ情報 <button class="btn ghost" style="padding:4px 8px;font-size:11px" onclick="editField(\\''+x.id+'\\',\\'chatgpt_info\\',\\'LIVE LOGプチ情報\\',true)">編集</button></h3><div class="memo">'+esc(info||'未登録')+'</div><small style="color:#6b7280;display:block;margin-top:7px">※公開情報をもとにChatGPTが調べた情報</small></div>';
+    return '<div data-livelog-info="1" class="section" style="display:block"><h3>🔎 LIVE LOGプチ情報 <button class="btn ghost" style="padding:4px 8px;font-size:11px" onclick="editField(\\''+x.id+'\\',\\'chatgpt_info\\',\\'LIVE LOGプチ情報\\',true)">編集</button></h3><div class="memo">'+esc(info||'未登録')+'</div><small style="color:#6b7280;display:block;margin-top:7px">※公開情報をもとにChatGPTが調べた情報</small></div>';
   }
   window.showDetail=function(id){
     const x=logs.find(a=>String(a.id)===String(id));if(!x)return;
